@@ -1,6 +1,13 @@
-from inputs import get_gamepad
+import argparse
 import inputs
 from udp import MarshallConnection
+
+parser = argparse.ArgumentParser(description='Control Marshall camera.')
+
+parser.add_argument('-i', '--ip', metavar='Camera IP Address', action='store', type=str, required=True)
+parser.add_argument('-c', '--controller', metavar='Controller number', action='store', type=int, default=1)
+
+args = parser.parse_args()
 
 def remember_value(func):
     oldValue = 0
@@ -136,8 +143,8 @@ event_dict = {
     }
 }
 
-conn = MarshallConnection()
-controller = inputs.devices.gamepads[0]
+conn = MarshallConnection(udp_ip=args.ip)
+controller = inputs.devices.gamepads[args.controller - 1]
 while True:
     events = controller.read()
     print(events)

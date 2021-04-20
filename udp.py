@@ -4,7 +4,7 @@ class MarshallConnection():
     _msg_counter = 0
     _msg_prefix = b'\x01\x00\x00\x09'
 
-    def __init__(self, udp_ip='192.168.102.33', udp_port=52381):
+    def __init__(self, udp_ip, udp_port=52381):
         self.udp_ip = udp_ip
         self.udp_port = udp_port
         self.sock = socket.socket(socket.AF_INET, # Internet

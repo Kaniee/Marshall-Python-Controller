@@ -4,6 +4,8 @@ from udp import MarshallConnection
 parser = argparse.ArgumentParser(description='Control Marshall camera.')
 group = parser.add_mutually_exclusive_group(required=True)
 
+
+parser.add_argument('-i', '--ip', metavar='Camera IP Address', action='store', type=str, required=True)
 group.add_argument('-s', '--set', metavar='Memory Number', action='store', type=int)
 group.add_argument('-r', '--reset', metavar='Memory Number', action='store', type=int)
 group.add_argument('-c', '--call', metavar='Memory Number', action='store', type=int)
@@ -12,7 +14,7 @@ group.add_argument('--off', action='store_true')
 
 args = parser.parse_args()
 
-conn = MarshallConnection()
+conn = MarshallConnection(udp_ip=args.ip)
 
 if args.on:
     conn.power_on()
