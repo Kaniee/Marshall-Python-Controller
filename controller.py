@@ -103,13 +103,13 @@ def btn_B(connection, value):
 def east_west(connection, value, oldValue):
     if value == oldValue or value == 0:
         return
-    connection.shutter(value)
+    connection.iris(value)
 
 @remember_value
 def north_south(connection, value, oldValue):
     if value == oldValue or value == 0:
         return
-    connection.iris(value)
+    connection.gain(value)
 
 event_dict = {
     'Key': {

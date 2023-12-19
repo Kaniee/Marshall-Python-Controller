@@ -2,7 +2,7 @@ import socket
 
 class MarshallConnection():
     _msg_counter = 0
-    _msg_prefix = b'\x01\x00'
+    _msg_prefix = b'\x01\x00\x00\x09'
 
     def __init__(self, udp_ip='192.168.102.34', udp_port=52381):
         self.udp_ip = udp_ip
@@ -18,10 +18,6 @@ class MarshallConnection():
         return self._get_msg_number().to_bytes(4, 'big')
    
     @staticmethod
-    def _cmd_size_bytes(msg) -> bytes:
-        return len(msg).to_bytes(2, 'big')
-
-    @staticmethod
     def _speed_bytes(speed) -> bytes:
         return speed.to_bytes(1, 'big')
 
@@ -35,13 +31,22 @@ class MarshallConnection():
             return b'\x02'
 
     @staticmethod
-    def _zoom_speed_bytes(zoom_speed) -> bytes:
-        if zoom_speed == 0:
+    def _zoom_focus_speed_bytes(speed) -> bytes:
+        if speed == 0:
             return b'\x00'
-        if zoom_speed > 0:
-            return bytes.fromhex('2' + str(zoom_speed - 1))
-        if zoom_speed < 0:
-            return bytes.fromhex('3' + str(-zoom_speed - 1))
+        if speed > 0:
+            return bytes.fromhex('2' + str(speed - 1))
+        if speed < 0:
+            return bytes.fromhex('3' + str(-speed - 1))
+
+    @staticmethod
+    def _shutter_iris_direction_bytes(direction) -> bytes:
+        if direction == 0:
+            return b'\x00'
+        if direction == 1:
+            return b'\x02'
+        if direction == -1:
+            return b'\x03'
 
     @staticmethod
     def _preset_bytes(action, preset_number):
@@ -50,7 +55,7 @@ class MarshallConnection():
         return action_byte + (preset_number % 128).to_bytes(1, 'big')
 
     def _built_msg(self, cmd) -> bytes:
-        msg = self._msg_prefix + self._cmd_size_bytes(cmd) + self._msg_number_bytes() + cmd
+        msg = self._msg_prefix + self._msg_number_bytes() + cmd
         return msg
     
     def move(self, pan_speed=0, tilt_speed=0):
@@ -69,20 +74,86 @@ class MarshallConnection():
         if abs(zoom_speed) > 8:
             raise ValueError('Absolute zoom speed can not exceed 8')
         
-        cmd = b'\x81\x01\x04\x07' + self._zoom_speed_bytes(zoom_speed) + b'\xFF'
-        # print(cmd)
+        cmd = b'\x81\x01\x04\x07' + self._zoom_focus_speed_bytes(zoom_speed) + b'\xFF'
         self.send_cmd(cmd)
+
+
+    def focus(self, focus_speed):
+        if not isinstance(focus_speed, int):
+            raise TypeError('Focus speed must be a interger value')
+        if abs(focus_speed) > 8:
+            raise ValueError('Absolute focus speed can not exceed 8')
+        
+        cmd = b'\x81\x01\x04\x08' + self._zoom_focus_speed_bytes(focus_speed) + b'\xFF'
+        self.send_cmd(cmd)
+
+    def shutter(self, direction):
+        if not isinstance(direction, int):
+            raise TypeError('Shutter direction must be a interger value')
+        if abs(direction) > 1:
+            raise ValueError('Shutter direction must be one of {-1, 0, 1}')
+        
+        cmd = b'\x81\x01\x04\x0A' + self._shutter_iris_direction_bytes(direction) + b'\xFF'
+        self.send_cmd(cmd)
+
+    def iris(self, direction):
+        if not isinstance(direction, int):
+            raise TypeError('Iris direction must be a interger value')
+        if abs(direction) > 1:
+            raise ValueError('Iris direction must be one of {-1, 0, 1}')
+        
+        cmd = b'\x81\x01\x04\x0B' + self._shutter_iris_direction_bytes(direction) + b'\xFF'
+        self.send_cmd(cmd)
+
+    def gain(self, direction):
+        if not isinstance(direction, int):
+            raise TypeError('Gain direction must be a interger value')
+        if abs(direction) > 1:
+            raise ValueError('Gain direction must be one of {-1, 0, 1}')
+        
+        cmd = b'\x81\x01\x04\x0C' + self._shutter_iris_direction_bytes(direction) + b'\xFF'
+        self.send_cmd(cmd)
+    
+    def automatic_exposure_mode(self, shutter_auto=True, iris_auto=True):
+        if shutter_auto and iris_auto:
+            mode_bytes = b'\x00'
+        else:
+            if shutter_auto:
+                mode_bytes = b'\x0B'
+            elif iris_auto:
+                mode_bytes = b'\x0A'
+            else:
+                mode_bytes = b'\x03'
+        cmd = b'\x81\x01\x04\x39' + mode_bytes + b'\xFF'
+        self.send_cmd(cmd)
+
+    def auto_focus_toggle(self):
+        cmd = b'\x81\x01\x04\x38\x10\xFF'
+        self.send_cmd(cmd)
+
+    def auto_focus_on(self):
+        cmd = b'\x81\x01\x04\x38\x02\xFF'
+        self.send_cmd(cmd)
+
+    def auto_focus_off(self):
+        cmd = b'\x81\x01\x04\x38\x03\xFF'
+        self.send_cmd(cmd)
+
 
     def stop(self):
         self.stop_move()
         self.stop_zoom()
+        self.stop_focus()
 
     def stop_move(self):
         self.move(pan_speed=0, tilt_speed=0)
 
     def stop_zoom(self):
         self.zoom(zoom_speed=0)
-        
+
+    def stop_focus(self):
+        self.focus(focus_speed=0)
+
     def reset_preset(self, preset_number):
         self._use_preset(0, preset_number)
 
